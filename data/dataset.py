@@ -13,7 +13,7 @@ from torch_geometric.data import InMemoryDataset
 from torch_geometric.data import Data
 
 class MoleculeDataset(InMemoryDataset):
-    def __init__(self, data_file_path, smile_column, root = 'dataset', featurizer = None, transform=None, pre_transform = None):
+    def __init__(self, root, data_file_path = None, smile_column = None, featurizer = None, transform=None, pre_transform = None):
 
         self.original_root = root
         self.original_file_path = data_file_path
@@ -39,6 +39,8 @@ class MoleculeDataset(InMemoryDataset):
 
     # Instead of downloading, move user provided data to the raw directory
     def download(self):
+        if not self.original_file_path:
+            raise ValueError("No processed data found. Path to original data source must be specified!")
         with open(self.original_file_path, 'rb') as f_in:
             with gzip.open(osp.join(self.raw_dir,self.raw_file_names), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
@@ -46,6 +48,8 @@ class MoleculeDataset(InMemoryDataset):
     def process(self):
         data_df = pd.read_csv(osp.join(self.raw_dir, 'data.csv.gz'))
 
+        if not self.smile_column:
+            raise ValueError("No processed data found. Name of the column containing SMILES must be specified!")
         assert (self.smile_column in data_df.columns)
 
         tasks = [column for column in data_df.columns if column != self.smile_column]
@@ -69,7 +73,7 @@ class MoleculeDataset(InMemoryDataset):
             data.edge_index = torch.from_numpy(graph['edge_index']).to(torch.int64)
             data.edge_attr = torch.from_numpy(graph['edge_feat']).to(torch.int64)
             data.x = torch.from_numpy(graph['node_feat']).to(torch.int64)
-            data.y = torch.Tensor(task_labels)
+            data.y = torch.Tensor(task_labels)[None,:]
 
             data_list.append(data)
 
