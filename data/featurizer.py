@@ -115,9 +115,11 @@ class OGBFeaturizer:
                 ]
         return bond_feature
 
+    @staticmethod
     def get_atom_encoder(self, emb_dim):
         return OGBAtomEncoder(emb_dim, self._get_atom_feature_dims())
 
+    @staticmethod
     def get_bond_encoder(self, emb_dim):
         return OGBBondEncoder(emb_dim, self._get_bond_feature_dims())
 
@@ -140,3 +142,13 @@ class OGBFeaturizer:
             self.allowable_features['possible_bond_stereo_list'],
             self.allowable_features['possible_is_conjugated_list']
         ]))
+
+FEATURIZER = {
+    'ogb': OGBFeaturizer,
+}
+
+def get_featurizer(name):
+    if name not in FEATURIZER:
+        raise ValueError("Featurizer name not recognized or featurizer is not supported.")
+    else:
+        return FEATURIZER[name]

@@ -5,7 +5,7 @@ import gzip
 import pandas as pd
 
 from utils import smiles2graph
-from featurizer import OGBFeaturizer
+from featurizer import OGBFeaturizer, get_featurizer
 # from tqdm import tqdm
 
 import torch
@@ -18,16 +18,19 @@ class MoleculeDataset(InMemoryDataset):
         self.original_root = root
         self.original_file_path = data_file_path
         self.smile_column = smile_column
+        self.featurizer_name = featurizer
         if featurizer == None:
+            self.featurizer_name = 'ogb'
             self.featurizer = OGBFeaturizer()
         else:
-            self.featurizer = featurizer
+            self.featurizer_name = featurizer
+            self.featurizer = get_featurizer(featurizer)
         _, data_folder = osp.split(osp.splitext(data_file_path)[0])
         self.folder = osp.join(root, data_folder)
 
         super(MoleculeDataset, self).__init__(self.folder, transform, pre_transform)
 
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        self.data, self.slices, self.featurizer_name = torch.load(self.processed_paths[0])
 
     @property
     def raw_file_names(self):
@@ -83,4 +86,4 @@ class MoleculeDataset(InMemoryDataset):
         data, slices = self.collate(data_list)
 
         print('Saving...')
-        torch.save((data, slices), self.processed_paths[0])
+        torch.save((data, slices, self.featurizer_name), self.processed_paths[0])

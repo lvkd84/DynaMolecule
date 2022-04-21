@@ -5,6 +5,7 @@ from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_poo
 from torch_geometric.loader import DataLoader
 from utils import get_optimizer, get_criterion
 from ..data.dataset import MoleculeDataset
+from ..data.featurizer import get_featurizer
 
 class MoleculeGNN(torch.nn.Module):
     
@@ -139,8 +140,23 @@ class MoleculePredictiveNetwork(torch.nn.Module):
         # initialized during training
         self.graph_pred = None
 
+        self.node_encoder = None
+
+        self.bond_encoder = None
+
     def forward(self, batch):
-        pass
+
+        x, edge_index, edge_attr, batch = batch.x, batch.edge_index, batch.edge_attr, batch.batch
+        
+        node_embeddings = self.GNN(x=self.node_encoder(x),
+                                   edge_index=edge_index,
+                                   edge_attr=self.bond_encoder(edge_attr))
+
+        graph_embeddings = self.pool(node_embeddings,batch)
+
+        preds = self.graph_pred(graph_embeddings)
+
+        return preds
 
 class MoleculePredictor:
 
@@ -168,6 +184,10 @@ class MoleculePredictor:
             torch.nn.Dropout(self.drop_ratio),
             torch.nn.Linear(self.emb_dim,num_tasks)
         )
+
+        featurizer_name = train_data.featurizer_name
+        self.model.node_encoder = get_featurizer(featurizer_name).get_atom_encoder()
+        self.model.bond_encoder = get_featurizer(featurizer_name).get_bond_encoder()
 
         optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
 
@@ -214,6 +234,8 @@ class MoleculePredictor:
 
             scheduler.step()
 
+            # If a validation set is provide, then the model with the best valid score is saved
+            # Else, the model is saved every training epoch
             if val_loss:
                 if val_loss < min_so_far:
                     min_so_far = val_loss
