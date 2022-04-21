@@ -119,6 +119,8 @@ class MoleculeGNNVN(torch.nn.Module):
 class MoleculePredictiveNetwork(torch.nn.Module):
 
     def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False):
+        super(MoleculePredictiveNetwork,self).__init__()
+        
         self.drop_ratio = drop_ratio
 
         self.emb_dim = emb_dim
@@ -161,7 +163,7 @@ class MoleculePredictiveNetwork(torch.nn.Module):
 class MoleculePredictor:
 
     def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False):
-        self.model = MoleculePredictiveNetwork(num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False)
+        self.model = MoleculePredictiveNetwork(num_layers, emb_dim, conv, JK, pooling = pooling, VN=VN, drop_ratio=drop_ratio, residual=residual)
 
     def train(self, data_path, val_data_path=None, save_model_path=None,
               task='regression', optimizer='adam',
@@ -239,10 +241,9 @@ class MoleculePredictor:
             if val_loss:
                 if val_loss < min_so_far:
                     min_so_far = val_loss
-                    # TODO: Save model
+                    torch.save(self,save_model_path)
             else:
-                # TODO: Save model
-                pass
+                torch.save(self,save_model_path)
 
         # TODO: Save training log
 

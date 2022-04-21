@@ -15,18 +15,15 @@ from torch_geometric.data import Data
 class MoleculeDataset(InMemoryDataset):
     def __init__(self, root, data_file_path = None, smile_column = None, featurizer = None, transform=None, pre_transform = None):
 
-        self.original_root = root
-        self.original_file_path = data_file_path
+        self.data_file_path = data_file_path
         self.smile_column = smile_column
-        self.featurizer_name = featurizer
         if featurizer == None:
             self.featurizer_name = 'ogb'
             self.featurizer = OGBFeaturizer()
         else:
             self.featurizer_name = featurizer
             self.featurizer = get_featurizer(featurizer)
-        _, data_folder = osp.split(osp.splitext(data_file_path)[0])
-        self.folder = osp.join(root, data_folder)
+        self.folder = root
 
         super(MoleculeDataset, self).__init__(self.folder, transform, pre_transform)
 
@@ -42,9 +39,9 @@ class MoleculeDataset(InMemoryDataset):
 
     # Instead of downloading, move user provided data to the raw directory
     def download(self):
-        if not self.original_file_path:
+        if not self.data_file_path:
             raise ValueError("No processed data found. Path to original data source must be specified!")
-        with open(self.original_file_path, 'rb') as f_in:
+        with open(self.data_file_path, 'rb') as f_in:
             with gzip.open(osp.join(self.raw_dir,self.raw_file_names), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
