@@ -24,12 +24,12 @@ class MoleculeGNN(torch.nn.Module):
         for _ in range(self.num_layers):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
-    def forward(self, x, edge_index, edge_attr, batch):
+    def forward(self, x, edge_index, edge_attr):
         h_list = [x]
-        for layer in range(self.num_layer):
-            h = self.layer_norms[layer](h_list[layer])
-            h = self.gnns[layer](h, edge_index, edge_attr)
-            if layer == self.num_layer - 1:
+        for layer in range(self.num_layers):
+            h = self.batch_norms[layer](h_list[layer])
+            h = self.conv_layers[layer](h, edge_index, edge_attr)
+            if layer == self.num_layers - 1:
                 h = F.dropout(h, self.drop_ratio, training = self.training)
             else:
                 h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
@@ -126,9 +126,11 @@ class MoleculePredictiveNetwork(torch.nn.Module):
         self.emb_dim = emb_dim
 
         if VN:
-            self.GNN = MoleculeGNN(num_layers, emb_dim, conv, JK, drop_ratio=0.0, residual=residual)
-        else:
             self.GNN = MoleculeGNNVN(num_layers, emb_dim, conv, JK, drop_ratio=0.0, residual=residual)
+        else:
+            self.GNN = MoleculeGNN(num_layers, emb_dim, conv, JK, drop_ratio=0.0, residual=residual)
+            
+        self.VN = VN
 
         if pooling == "sum":
             self.pool = global_add_pool
@@ -150,9 +152,15 @@ class MoleculePredictiveNetwork(torch.nn.Module):
 
         x, edge_index, edge_attr, batch = batch.x, batch.edge_index, batch.edge_attr, batch.batch
         
-        node_embeddings = self.GNN(x=self.node_encoder(x),
-                                   edge_index=edge_index,
-                                   edge_attr=self.bond_encoder(edge_attr))
+        if self.VN:
+            node_embeddings = self.GNN(x=self.node_encoder(x),
+                                       edge_index=edge_index,
+                                       edge_attr=self.bond_encoder(edge_attr),
+                                       batch=batch)
+        else:
+            node_embeddings = self.GNN(x=self.node_encoder(x),
+                                       edge_index=edge_index,
+                                       edge_attr=self.bond_encoder(edge_attr),)            
 
         graph_embeddings = self.pool(node_embeddings,batch)
 
@@ -164,6 +172,8 @@ class MoleculePredictor:
 
     def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False):
         self.model = MoleculePredictiveNetwork(num_layers, emb_dim, conv, JK, pooling = pooling, VN=VN, drop_ratio=drop_ratio, residual=residual)
+        self.drop_ratio = drop_ratio
+        self.emb_dim = emb_dim
 
     def train(self, data_path, val_data_path=None, save_model_path=None,
               task='regression', optimizer='adam',
@@ -171,7 +181,6 @@ class MoleculePredictor:
 
         self.batch_size = batch_size
 
-        # TODO: train should takes in paths to data and create dataloaders accordingly
         train_data = MoleculeDataset(data_path)
         dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
@@ -181,30 +190,28 @@ class MoleculePredictor:
         else:
             valloader = None
 
-        _, num_tasks = dataloader[0].y.shape
+        _, num_tasks = train_data[0].y.shape
         self.model.graph_pred = torch.nn.Sequential(
             torch.nn.Dropout(self.drop_ratio),
             torch.nn.Linear(self.emb_dim,num_tasks)
         )
 
         featurizer_name = train_data.featurizer_name
-        self.model.node_encoder = get_featurizer(featurizer_name).get_atom_encoder()
-        self.model.bond_encoder = get_featurizer(featurizer_name).get_bond_encoder()
+        self.model.node_encoder = get_featurizer(featurizer_name).get_atom_encoder(self.emb_dim)
+        self.model.bond_encoder = get_featurizer(featurizer_name).get_bond_encoder(self.emb_dim)
 
-        optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
+        self.optimizer = get_optimizer(optimizer)(self.model.parameters(), lr=lr)
 
-        criterion = get_criterion(task)()
+        self.criterion = get_criterion(task)()
 
         if device:
             device = torch.device(device)
         else:
             device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-        scheduler = StepLR(optimizer, step_size=1, gamma=decay)
+        scheduler = StepLR(self.optimizer, step_size=1, gamma=decay)
 
         self.model.to(device)
-        self.optimizer.to(device)
-        self.criterion.to(device)
 
         min_so_far = 1000
         for _ in range(epoch):
@@ -214,13 +221,18 @@ class MoleculePredictor:
             for step, batch in enumerate(dataloader):      
                 batch = batch.to(device)
                 pred = self.model(batch)
+                print("PRED ", pred)
                 y = batch.y
-                loss = criterion(pred.squeeze(),y)
-                optimizer.zero_grad()
+                print("YYYY ", y)
+                loss = self.criterion(pred.squeeze(),y)
+                print("LOSS ", loss)
+                self.optimizer.zero_grad()
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
                 train_loss += float(loss.cpu().item())
             train_loss = train_loss/step
+            
+            print("Train loss:", train_loss)
 
             val_loss = None
             if valloader:
@@ -257,7 +269,6 @@ class MoleculePredictor:
             device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
         self.model.to(device)
-        self.criterion.to(device)
 
         train_data = MoleculeDataset(eval_data_path)
         dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=False)
