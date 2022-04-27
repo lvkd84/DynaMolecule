@@ -221,18 +221,13 @@ class MoleculePredictor:
             for step, batch in enumerate(dataloader):      
                 batch = batch.to(device)
                 pred = self.model(batch)
-                print("PRED ", pred)
                 y = batch.y
-                print("YYYY ", y)
                 loss = self.criterion(pred.squeeze(),y)
-                print("LOSS ", loss)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
                 train_loss += float(loss.cpu().item())
             train_loss = train_loss/step
-            
-            print("Train loss:", train_loss)
 
             val_loss = None
             if valloader:

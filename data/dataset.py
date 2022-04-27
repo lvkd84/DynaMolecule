@@ -52,6 +52,8 @@ class MoleculeDataset(InMemoryDataset):
             raise ValueError("No processed data found. Name of the column containing SMILES must be specified!")
         assert (self.smile_column in data_df.columns)
 
+        # TODO: Check for missing data
+
         tasks = [column for column in data_df.columns if column != self.smile_column]
         smiles_list = data_df[self.smile_column]
         task_list = data_df[tasks]
