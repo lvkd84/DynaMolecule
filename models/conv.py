@@ -15,25 +15,26 @@ class GCNConv(MessagePassing):
         super(GCNConv, self).__init__(aggr='add')
 
         self.linear = torch.nn.Linear(emb_dim, emb_dim)
-        self.edge_linear = torch.nn.Linear(emb_dim, 1)
         self.root_emb = torch.nn.Embedding(1, emb_dim)
 
-    # def reset_parameters(self):
-    #     pass
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        self.linear.reset_parameters()
+        self.root_emb.reset_parameters()
 
     def forward(self, x, edge_index, edge_attr):
         x = self.linear(x)
 
         row, col = edge_index
 
-        edge_weight = torch.squeeze(self.edge_linear(edge_attr),dim=-1)
         deg = degree(row, x.size(0), dtype = x.dtype) + 1
         deg_inv_sqrt = deg.pow(-0.5)
         deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
 
         norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
 
-        return self.propagate(edge_index, x=x, edge_weight = edge_weight, norm=norm) + F.relu(x + self.root_emb.weight) * 1./deg.view(-1,1)
+        return self.propagate(edge_index, x=x, edge_attr = edge_attr, norm=norm) + F.relu(x + self.root_emb.weight) * 1./deg.view(-1,1)
 
     def message(self, x_j, edge_attr, norm):
         return norm.view(-1, 1) * F.relu(x_j + edge_attr)
@@ -52,14 +53,18 @@ class GINEConv(MessagePassing):
 
         super(GINEConv, self).__init__(aggr = "add")
 
+        self.train_ep = train_ep
+
         self.mlp = torch.nn.Sequential(torch.nn.Linear(emb_dim, emb_dim), torch.nn.BatchNorm1d(emb_dim), torch.nn.ReLU(), torch.nn.Linear(emb_dim, emb_dim))
         if train_ep:
             self.eps = torch.nn.Parameter(torch.Tensor([0]))
         else:
             self.register_buffer('eps', torch.Tensor([0.]))
 
-    # def reset_parameters(self):
-    #     pass
+    def reset_parameters(self):
+        self.mlp.reset_parameters()
+        if self.train_ep:
+            zeros(self.eps)
 
     def forward(self, x, edge_index, edge_attr):
         out = self.mlp((1 + self.eps)*x + self.propagate(edge_index, x=x, edge_attr=edge_attr))
@@ -83,7 +88,6 @@ class GATConv(MessagePassing):
         emb_dim,
         heads = 1,
         negative_slope = 0.2,
-        dropout = 0.0,
         fill_value = 'mean',
     ):
         super().__init__(node_dim=0)
@@ -91,7 +95,6 @@ class GATConv(MessagePassing):
         self.emb_dim = emb_dim
         self.heads = heads
         self.negative_slope = negative_slope
-        self.dropout = dropout
         self.fill_value = fill_value
 
         self.lin_l = Linear(emb_dim, heads * emb_dim, bias=True,
@@ -166,5 +169,4 @@ class GATConv(MessagePassing):
         alpha = (x * self.att).sum(dim=-1)
         alpha = softmax(alpha, index, ptr, size_i)
         self._alpha = alpha
-        alpha = F.dropout(alpha, p=self.dropout, training=self.training)
         return x_j * alpha.unsqueeze(-1)

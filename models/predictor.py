@@ -265,13 +265,13 @@ class MoleculePredictor:
 
         self.model.to(device)
 
-        train_data = MoleculeDataset(eval_data_path)
-        dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=False)
+        eval_data = MoleculeDataset(eval_data_path)
+        dataloader = DataLoader(eval_data, batch_size=self.batch_size, shuffle=False)
 
         predictions = []
-        for step, data in enumerate(dataloader):
+        for step, batch in enumerate(dataloader):
             batch = batch.to(device)
-            predictions.append(self.model(data))
+            predictions.append(self.model(batch))
         predictions = torch.cat(predictions,dim=0)
 
         # TODO: save predictions
