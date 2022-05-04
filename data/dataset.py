@@ -18,7 +18,7 @@ class MoleculeDataset(InMemoryDataset):
         self.data_file_path = data_file_path
         self.smile_column = smile_column
         if featurizer == None:
-            self.featurizer_name = 'ogb'
+            self.featurizer_name = 'OGB'
             self.featurizer = OGBFeaturizer()
         else:
             self.featurizer_name = featurizer
