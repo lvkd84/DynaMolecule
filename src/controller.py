@@ -57,3 +57,9 @@ class DataPreparationController():
             self.view.processingLog.append("processed")
             self.view.processingLog.append("from the specified saving path at " + self.view.rootPathText.text() + " before retrying.")
             self.view.progressBar.setValue(0)
+
+class ModelTrainingController():
+
+    def __init__(self, view):
+        super(ModelTrainingController, self).__init__()
+        self.view = view
