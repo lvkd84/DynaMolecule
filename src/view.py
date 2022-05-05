@@ -83,11 +83,17 @@ class DataPreparationTab(QWidget):
         self.processingLog.setReadOnly(True)
 
         ###############################
+        # Progress Bar
+        ###############################
+        self.progressBar = QProgressBar()
+
+        ###############################
         # Main Layout
         ###############################
         self.mainLayout = QVBoxLayout()
         self.mainLayout.addWidget(self.formWidget)
         self.mainLayout.addWidget(self.processingLog)
+        self.mainLayout.addWidget(self.progressBar)
 
         self.setLayout(self.mainLayout)
 
@@ -99,7 +105,6 @@ class DataPreparationTab(QWidget):
         self.rootBox = QGroupBox("Saving Location of the Processed Data", self.formWidget)
         self.rootPathText = QLineEdit(self.rootBox)
         self.rootBrowseButton = QPushButton("Browse", self.rootBox)
-        # self.rootBrowseButton.clicked.connect(partial(self._browseFile,text=self.rootPathText,title="Select saving location",folder=True))
         self.rootLayout = QHBoxLayout()
         self.rootLayout.addWidget(self.rootPathText)
         self.rootLayout.addWidget(self.rootBrowseButton)
@@ -109,7 +114,6 @@ class DataPreparationTab(QWidget):
         self.dataPathBox = QGroupBox("Data File Path (.csv)", self.formWidget)
         self.dataPathText = QLineEdit(self.dataPathBox)
         self.dataBrowseButton = QPushButton("Browse", self.dataPathBox)
-        # self.dataBrowseButton.clicked.connect(partial(self._browseFile,text=self.dataPathText,title="Select data file",folder=False))
         self.dataPathLayout = QHBoxLayout()
         self.dataPathLayout.addWidget(self.dataPathText)
         self.dataPathLayout.addWidget(self.dataBrowseButton)
@@ -119,7 +123,7 @@ class DataPreparationTab(QWidget):
         self.processingFormBox = QGroupBox("Data Processing Options", self.formWidget)
         self.smilesColumnName = QLineEdit(self.processingFormBox)
         self.featurizerSpinBar = QComboBox(self.processingFormBox)
-        self.featurizerSpinBar.addItems(['OGB'])
+        self.featurizerSpinBar.addItems(['','OGB'])
         self.processingFormLayout = QFormLayout()
         self.processingFormLayout.addRow(QLabel("SMILES Column"),self.smilesColumnName)
         self.processingFormLayout.addRow(QLabel("Featurizer"),self.featurizerSpinBar)
@@ -139,7 +143,8 @@ class DataPreparationTab(QWidget):
     def _hook_to_controller(self):
         self.rootBrowseButton.clicked.connect(self.controller.browseFolder)
         self.dataBrowseButton.clicked.connect(self.controller.browseFile)
-
+        self.clearButton.clicked.connect(self.controller.clear)
+        self.processButton.clicked.connect(self.controller.process)
 
 class ModelTrainingTab(QWidget):
 

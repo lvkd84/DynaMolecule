@@ -4,16 +4,15 @@ import shutil
 import gzip
 import pandas as pd
 
-from utils import smiles2graph
-from featurizer import OGBFeaturizer, get_featurizer
-# from tqdm import tqdm
+from .utils import smiles2graph
+from .featurizer import OGBFeaturizer, get_featurizer
 
 import torch
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.data import Data
 
 class MoleculeDataset(InMemoryDataset):
-    def __init__(self, root, data_file_path = None, smile_column = None, featurizer = None, transform=None, pre_transform = None):
+    def __init__(self, root, data_file_path, smile_column, featurizer = None, signal_obj = None):
 
         self.data_file_path = data_file_path
         self.smile_column = smile_column
@@ -22,10 +21,12 @@ class MoleculeDataset(InMemoryDataset):
             self.featurizer = OGBFeaturizer()
         else:
             self.featurizer_name = featurizer
-            self.featurizer = get_featurizer(featurizer)
+            self.featurizer = get_featurizer(featurizer)()
         self.folder = root
 
-        super(MoleculeDataset, self).__init__(self.folder, transform, pre_transform)
+        self.signal_obj = signal_obj
+
+        super(MoleculeDataset, self).__init__(self.folder, transform = None, pre_transform = None)
 
         self.data, self.slices, self.featurizer_name = torch.load(self.processed_paths[0])
 
@@ -39,8 +40,6 @@ class MoleculeDataset(InMemoryDataset):
 
     # Instead of downloading, move user provided data to the raw directory
     def download(self):
-        if not self.data_file_path:
-            raise ValueError("No processed data found. Path to original data source must be specified!")
         with open(self.data_file_path, 'rb') as f_in:
             with gzip.open(osp.join(self.raw_dir,self.raw_file_names), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
@@ -48,17 +47,22 @@ class MoleculeDataset(InMemoryDataset):
     def process(self):
         data_df = pd.read_csv(osp.join(self.raw_dir, 'data.csv.gz'))
 
-        if not self.smile_column:
-            raise ValueError("No processed data found. Name of the column containing SMILES must be specified!")
-        assert (self.smile_column in data_df.columns)
+        if not (self.smile_column in data_df.columns):
+            if self.signal_obj:
+                self.signal_obj.emit('ERROR: The specified SMILES column name is not found in the data file.', 'error')
+            raise ValueError("The specified SMILES column name is not found in the data file.")
 
-        # TODO: Check for missing data
+        if data_df.isnull().values.any():
+            if self.signal_obj:
+                self.signal_obj.emit('ERROR: Missing values found in the data file', 'error')
+            raise ValueError("Missing values found in the data file.")
 
         tasks = [column for column in data_df.columns if column != self.smile_column]
         smiles_list = data_df[self.smile_column]
         task_list = data_df[tasks]
 
-        print('Converting SMILES strings into graphs...')
+        if self.signal_obj:
+            self.signal_obj.emit('Converting SMILES strings into graphs...', 'log')
         data_list = []
         for i in range(len(smiles_list)):
             
@@ -79,10 +83,18 @@ class MoleculeDataset(InMemoryDataset):
 
             data_list.append(data)
 
+            if self.signal_obj:
+                self.signal_obj.emit(str(i/len(smiles_list)),"progress")
+
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
 
         data, slices = self.collate(data_list)
 
-        print('Saving...')
+        if self.signal_obj:
+            self.signal_obj.emit('Saving...','log')
+
         torch.save((data, slices, self.featurizer_name), self.processed_paths[0])
+
+        if self.signal_obj:
+            self.signal_obj.emit('Done!','log')

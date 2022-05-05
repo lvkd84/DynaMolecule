@@ -148,7 +148,7 @@ class OGBFeaturizer:
         ]))
 
 FEATURIZER = {
-    'ogb': OGBFeaturizer,
+    'OGB': OGBFeaturizer,
 }
 
 def get_featurizer(name):
