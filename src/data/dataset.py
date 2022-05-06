@@ -4,15 +4,15 @@ import shutil
 import gzip
 import pandas as pd
 
-from .utils import smiles2graph
-from .featurizer import OGBFeaturizer, get_featurizer
+from data.utils import smiles2graph
+from data.featurizer import OGBFeaturizer, get_featurizer
 
 import torch
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.data import Data
 
 class MoleculeDataset(InMemoryDataset):
-    def __init__(self, root, data_file_path, smile_column, featurizer = None, signal_obj = None):
+    def __init__(self, root, data_file_path, smile_column=None, featurizer = None, signal_obj = None):
 
         self.data_file_path = data_file_path
         self.smile_column = smile_column

@@ -102,7 +102,7 @@ class DataPreparationTab(QWidget):
         self._hook_to_controller()
 
     def _rootUI(self):
-        self.rootBox = QGroupBox("Saving Location of the Processed Data", self.formWidget)
+        self.rootBox = QGroupBox("Saving Location of the Processed Data (*)", self.formWidget)
         self.rootPathText = QLineEdit(self.rootBox)
         self.rootBrowseButton = QPushButton("Browse", self.rootBox)
         self.rootLayout = QHBoxLayout()
@@ -111,7 +111,7 @@ class DataPreparationTab(QWidget):
         self.rootBox.setLayout(self.rootLayout)
 
     def _dataPathUI(self):
-        self.dataPathBox = QGroupBox("Data File Path (.csv)", self.formWidget)
+        self.dataPathBox = QGroupBox("Data File Path (*)", self.formWidget)
         self.dataPathText = QLineEdit(self.dataPathBox)
         self.dataBrowseButton = QPushButton("Browse", self.dataPathBox)
         self.dataPathLayout = QHBoxLayout()
@@ -125,7 +125,7 @@ class DataPreparationTab(QWidget):
         self.featurizerSpinBar = QComboBox(self.processingFormBox)
         self.featurizerSpinBar.addItems(['','OGB'])
         self.processingFormLayout = QFormLayout()
-        self.processingFormLayout.addRow(QLabel("SMILES Column"),self.smilesColumnName)
+        self.processingFormLayout.addRow(QLabel("SMILES Column (*)"),self.smilesColumnName)
         self.processingFormLayout.addRow(QLabel("Featurizer"),self.featurizerSpinBar)
         self.processingFormBox.setLayout(self.processingFormLayout)
 
@@ -206,7 +206,7 @@ class ModelTrainingTab(QWidget):
         self._hook_to_controller()
 
     def _processedDataUI(self):
-        self.dataPathBox = QGroupBox("Location of the Processed Data", self.formWidget)
+        self.dataPathBox = QGroupBox("Location of the Processed Data (*)", self.formWidget)
         self.dataPathText = QLineEdit(self.dataPathBox)
         self.dataBrowseButton = QPushButton("Browse", self.dataPathBox)
         self.dataLayout = QHBoxLayout()
@@ -224,7 +224,7 @@ class ModelTrainingTab(QWidget):
         self.validDataPathBox.setLayout(self.validDataLayout)
 
     def _modelSavingPathUI(self):
-        self.savingPathBox = QGroupBox("Saving Location of the Trained Model", self.formWidget)
+        self.savingPathBox = QGroupBox("Saving Location of the Trained Model (Optional)", self.formWidget)
         self.savingPathText = QLineEdit(self.savingPathBox)
         self.savingBrowseButton = QPushButton("Browse", self.savingPathBox)
         self.savingLayout = QHBoxLayout()
@@ -258,6 +258,8 @@ class ModelTrainingTab(QWidget):
         self.modelFormLayout.addRow(QLabel("Dropout Ratio"),self.dropRatio)
         self.modelFormLayout.addRow(QLabel("Residual Conenction"),self.residualConnection)
         # optimizer, learning rate, decay, epoch, batch size
+        self.learningTask = QComboBox(self.trainingFormBox)
+        self.learningTask.addItems(['','regression','classification','binary classification'])
         self.optimizerType = QComboBox(self.trainingFormBox)
         self.optimizerType.addItems(['Adam','AdamW','SGD'])
         self.learningRate = QLineEdit(self.trainingFormBox)
@@ -265,6 +267,7 @@ class ModelTrainingTab(QWidget):
         self.numEpoch = QLineEdit(self.trainingFormBox)
         self.batchSize = QLineEdit(self.trainingFormBox)
         self.trainingFormLayout = QFormLayout()
+        self.trainingFormLayout.addRow(QLabel("Learning Task (*)"),self.learningTask)
         self.trainingFormLayout.addRow(QLabel("Optimizer"),self.optimizerType)
         self.trainingFormLayout.addRow(QLabel("Learning Rate"),self.learningRate)
         self.trainingFormLayout.addRow(QLabel("Decay Rate"),self.decayRate)
@@ -288,7 +291,11 @@ class ModelTrainingTab(QWidget):
         self.submitBox.setLayout(self.submitLayout)
 
     def _hook_to_controller(self):
-        pass
+        self.dataBrowseButton.clicked.connect(partial(self.controller.browseFolder,text_line='data-path'))
+        self.validDataBrowseButton.clicked.connect(partial(self.controller.browseFolder,text_line='valid-path'))
+        self.savingBrowseButton.clicked.connect(partial(self.controller.browseFolder,text_line='saving-path'))
+        self.processButton.clicked.connect(self.controller.train)
+        self.clearButton.clicked.connect(self.controller.clear)
 
 class ModelEvaluationTab(QWidget):
 

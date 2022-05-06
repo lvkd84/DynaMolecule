@@ -11,9 +11,9 @@ def get_criterion(task_name):
         return CRITERION[task_name]
 
 OPTIMIZER = {
-    'sgd':torch.optim.SGD,
-    'adam':torch.optim.Adam,
-    'adamw':torch.optim.AdamW,
+    'SGD':torch.optim.SGD,
+    'Adam':torch.optim.Adam,
+    'AdamW':torch.optim.AdamW,
 }
 
 def get_optimizer(optimizer):

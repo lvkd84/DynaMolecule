@@ -3,9 +3,9 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool
 from torch_geometric.loader import DataLoader
-from utils import get_optimizer, get_criterion
-from ..data.dataset import MoleculeDataset
-from ..data.featurizer import get_featurizer
+from models.utils import get_optimizer, get_criterion
+from data.dataset import MoleculeDataset
+from data.featurizer import get_featurizer
 
 class MoleculeGNN(torch.nn.Module):
     
@@ -170,13 +170,14 @@ class MoleculePredictiveNetwork(torch.nn.Module):
 
 class MoleculePredictor:
 
-    def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False):
+    def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False, signal_obj=None):
         self.model = MoleculePredictiveNetwork(num_layers, emb_dim, conv, JK, pooling = pooling, VN=VN, drop_ratio=drop_ratio, residual=residual)
         self.drop_ratio = drop_ratio
         self.emb_dim = emb_dim
+        self.signal_obj = signal_obj
 
     def train(self, data_path, val_data_path=None, save_model_path=None,
-              task='regression', optimizer='adam',
+              task='regression', optimizer='Adam',
               epoch=100, lr=0.001, batch_size=256, decay=1.0, device=None):
 
         self.batch_size = batch_size
@@ -214,11 +215,13 @@ class MoleculePredictor:
         self.model.to(device)
 
         min_so_far = 1000
-        for _ in range(epoch):
+        for ep in range(epoch):
 
             self.model.train()
             train_loss = 0
-            for step, batch in enumerate(dataloader):      
+            if self.signal_obj:
+                self.signal_obj.emit("Training Epoch " + str(ep),"log")
+            for step, batch in enumerate(dataloader): 
                 batch = batch.to(device)
                 pred = self.model(batch)
                 y = batch.y
@@ -227,12 +230,19 @@ class MoleculePredictor:
                 loss.backward()
                 self.optimizer.step()
                 train_loss += float(loss.cpu().item())
+                if self.signal_obj:
+                    self.signal_obj.emit(str(step/len(dataloader)),"epoch-progress")
             train_loss = train_loss/step
+
+            if self.signal_obj:
+                self.signal_obj.emit("Train Loss: " + str(train_loss),"log")
 
             val_loss = None
             if valloader:
                 self.model.eval()
                 val_loss = 0
+                if self.signal_obj:
+                    self.signal_obj.emit("Validating Epoch " + str(ep),"log")
                 for step, batch in enumerate(valloader):
                     batch = batch.to(device)
                     pred = self.model(batch)
@@ -240,6 +250,8 @@ class MoleculePredictor:
                     loss = self.criterion(pred.squeeze(),y)
                     val_loss += float(loss.cpu().item())
                 val_loss = val_loss/step
+                if self.signal_obj:
+                    self.signal_obj.emit("Validation Loss: " + str(val_loss),"log")
 
             scheduler.step()
 
@@ -249,8 +261,13 @@ class MoleculePredictor:
                 if val_loss < min_so_far:
                     min_so_far = val_loss
                     torch.save(self,save_model_path)
+                if self.signal_obj:
+                    self.signal_obj.emit("Lowest Validation Result So Far: " + str(min_so_far),"log")
             else:
                 torch.save(self,save_model_path)
+
+            if self.signal_obj:
+                    self.signal_obj.emit(str(ep/epoch),"training-progress")
 
         # TODO: Save training log
 
