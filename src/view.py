@@ -10,7 +10,8 @@ class MainWindow(QMainWindow):
         self.scr_size = scr_size
 
         self.setWindowTitle("DynaMolecule")
-        self.setFixedSize(int(self.scr_size/3*2),int(self.scr_size/3*2))
+        # self.setFixedSize(int(self.scr_size/3*2),int(self.scr_size/3*2))
+        self.setFixedSize(800,800)
         self.tabWidget = NavigationTabs(self)
         self.setCentralWidget(self.tabWidget)
 

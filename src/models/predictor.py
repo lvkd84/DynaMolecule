@@ -99,9 +99,9 @@ class MoleculeGNNVN(torch.nn.Module):
             if layer != self.num_layers-1:
                 vn_embedding_temp = global_add_pool(h_list[layer], batch) + vn_embedding
                 if self.residual:
-                    vn_embedding = vn_embedding + F.dropout(self.mlp_virtualnode_list[layer](vn_embedding_temp), self.drop_ratio, training = self.training)
+                    vn_embedding = vn_embedding + F.dropout(self.vn_mlps[layer](vn_embedding_temp), self.drop_ratio, training = self.training)
                 else:
-                    vn_embedding = F.dropout(self.mlp_virtualnode_list[layer](vn_embedding), self.drop_ratio, training = self.training)
+                    vn_embedding = F.dropout(self.vn_mlps[layer](vn_embedding), self.drop_ratio, training = self.training)
         
         if self.JK == "concat":
             node_representation = torch.cat(h_list, dim = 1)
@@ -231,7 +231,7 @@ class MoleculePredictor:
                 self.optimizer.step()
                 train_loss += float(loss.cpu().item())
                 if self.signal_obj:
-                    self.signal_obj.emit(str(step/len(dataloader)),"epoch-progress")
+                    self.signal_obj.emit(str((step+1)/len(dataloader)),"epoch-progress")
             train_loss = train_loss/step
 
             if self.signal_obj:
@@ -260,14 +260,19 @@ class MoleculePredictor:
             if val_loss:
                 if val_loss < min_so_far:
                     min_so_far = val_loss
-                    torch.save(self,save_model_path)
+                    if save_model_path:
+                        torch.save(self,save_model_path)
                 if self.signal_obj:
                     self.signal_obj.emit("Lowest Validation Result So Far: " + str(min_so_far),"log")
             else:
-                torch.save(self,save_model_path)
+                if save_model_path:
+                    torch.save(self,save_model_path)
 
             if self.signal_obj:
-                    self.signal_obj.emit(str(ep/epoch),"training-progress")
+                self.signal_obj.emit(str((ep+1)/epoch),"training-progress")
+
+        if self.signal_obj:
+            self.signal_obj.emit("Finished training!!","finished-training")
 
         # TODO: Save training log
 

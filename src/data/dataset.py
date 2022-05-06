@@ -12,7 +12,7 @@ from torch_geometric.data import InMemoryDataset
 from torch_geometric.data import Data
 
 class MoleculeDataset(InMemoryDataset):
-    def __init__(self, root, data_file_path, smile_column=None, featurizer = None, signal_obj = None):
+    def __init__(self, root, data_file_path=None, smile_column=None, featurizer = None, signal_obj = None):
 
         self.data_file_path = data_file_path
         self.smile_column = smile_column
@@ -40,6 +40,8 @@ class MoleculeDataset(InMemoryDataset):
 
     # Instead of downloading, move user provided data to the raw directory
     def download(self):
+        if not self.data_file_path:
+            raise ValueError("No processed data found. Path to original data source must be specified!")
         with open(self.data_file_path, 'rb') as f_in:
             with gzip.open(osp.join(self.raw_dir,self.raw_file_names), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
@@ -84,7 +86,7 @@ class MoleculeDataset(InMemoryDataset):
             data_list.append(data)
 
             if self.signal_obj:
-                self.signal_obj.emit(str(i/len(smiles_list)),"progress")
+                self.signal_obj.emit(str((i+1)/len(smiles_list)),"progress")
 
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
