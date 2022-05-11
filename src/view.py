@@ -306,4 +306,90 @@ class ModelEvaluationTab(QWidget):
         self.tabUI()
 
     def tabUI(self):
-        pass
+        ###############################
+        # User Input Form
+        ###############################
+        self.formWidget = QWidget()
+        # Get processed data root
+        self._modelPathUI()
+        # Get data path
+        self._dataPathUI()
+        # Evaluating form
+        self._evaluatingFormUI()
+        # Submit Buttons
+        self._submitUI()
+        # Form layout
+        self.formLayout = QVBoxLayout()
+        self.formLayout.addWidget(self.modelPathBox)
+        self.formLayout.addWidget(self.dataPathBox)
+        self.formLayout.addWidget(self.evaluatingFormBox)
+        self.formLayout.addWidget(self.submitBox)
+        self.formWidget.setLayout(self.formLayout)
+
+        ###############################
+        # Log
+        ###############################
+        self.evaluatingLog = QTextEdit()
+        self.evaluatingLog.setReadOnly(True)
+
+        ###############################
+        # Progress Bar
+        ###############################
+        self.progressBar = QProgressBar()
+
+        ###############################
+        # Main Layout
+        ###############################
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.addWidget(self.formWidget)
+        self.mainLayout.addWidget(self.evaluatingLog)
+        self.mainLayout.addWidget(self.progressBar)
+
+        self.setLayout(self.mainLayout)
+
+        self.controller = ModelEvaluationController(self)
+
+        self._hook_to_controller()
+
+    def _modelPathUI(self):
+        self.modelPathBox = QGroupBox("Location of the Saved Trained Model (*)", self.formWidget)
+        self.modelPathText = QLineEdit(self.modelPathBox)
+        self.modelPathBrowseButton = QPushButton("Browse", self.modelPathBox)
+        self.modelPathLayout = QHBoxLayout()
+        self.modelPathLayout.addWidget(self.modelPathText)
+        self.modelPathLayout.addWidget(self.modelPathBrowseButton)
+        self.modelPathBox.setLayout(self.modelPathLayout)
+
+    def _dataPathUI(self):
+        self.dataPathBox = QGroupBox("Location of the Processed Evaluation Data (*)", self.formWidget)
+        self.dataPathText = QLineEdit(self.dataPathBox)
+        self.dataBrowseButton = QPushButton("Browse", self.dataPathBox)
+        self.dataLayout = QHBoxLayout()
+        self.dataLayout.addWidget(self.dataPathText)
+        self.dataLayout.addWidget(self.dataBrowseButton)
+        self.dataPathBox.setLayout(self.dataLayout)
+
+    def _evaluatingFormUI(self):
+        self.evaluatingFormBox = QGroupBox("Model and Training Options", self.formWidget)
+        self.labeledData = QComboBox(self.evaluatingFormBox)
+        self.labeledData.addItems(['False','True'])
+        self.evaluatingFormLayout = QFormLayout()
+        self.evaluatingFormLayout.addRow(QLabel("Is evaluation data labeled?"),self.labeledData)
+        self.evaluatingFormBox.setLayout(self.evaluatingFormLayout)
+
+    def _submitUI(self):
+        self.submitBox = QGroupBox(self.formWidget)
+        self.processButton = QPushButton("Start Evaluating",self.submitBox)
+        self.processButton.setStyleSheet("background-color : green")
+        self.clearButton = QPushButton("Clear",self.submitBox)
+        self.clearButton.setStyleSheet("background-color : red")
+        self.submitLayout = QGridLayout()
+        self.submitLayout.addWidget(self.processButton, 0, 1)
+        self.submitLayout.addWidget(self.clearButton, 0, 2)
+        self.submitBox.setLayout(self.submitLayout)
+
+    def _hook_to_controller(self):
+        self.modelPathBrowseButton.clicked.connect(self.controller.browseFile)
+        self.dataBrowseButton.clicked.connect(self.controller.browseFolder)
+        self.clearButton.clicked.connect(self.controller.clear)
+        self.processButton.clicked.connect(self.controller.eval)

@@ -170,15 +170,14 @@ class MoleculePredictiveNetwork(torch.nn.Module):
 
 class MoleculePredictor:
 
-    def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False, signal_obj=None):
+    def __init__(self, num_layers, emb_dim, conv, JK, pooling = "sum", VN=False, drop_ratio=0.0, residual=False):
         self.model = MoleculePredictiveNetwork(num_layers, emb_dim, conv, JK, pooling = pooling, VN=VN, drop_ratio=drop_ratio, residual=residual)
         self.drop_ratio = drop_ratio
         self.emb_dim = emb_dim
-        self.signal_obj = signal_obj
 
     def train(self, data_path, val_data_path=None, save_model_path=None,
               task='regression', optimizer='Adam',
-              epoch=100, lr=0.001, batch_size=256, decay=1.0, device=None):
+              epoch=100, lr=0.001, batch_size=256, decay=1.0, device=None, signal_obj=None):
 
         self.batch_size = batch_size
 
@@ -219,8 +218,8 @@ class MoleculePredictor:
 
             self.model.train()
             train_loss = 0
-            if self.signal_obj:
-                self.signal_obj.emit("Training Epoch " + str(ep),"log")
+            if signal_obj:
+                signal_obj.emit("Training Epoch " + str(ep),"log")
             for step, batch in enumerate(dataloader): 
                 batch = batch.to(device)
                 pred = self.model(batch)
@@ -230,19 +229,19 @@ class MoleculePredictor:
                 loss.backward()
                 self.optimizer.step()
                 train_loss += float(loss.cpu().item())
-                if self.signal_obj:
-                    self.signal_obj.emit(str((step+1)/len(dataloader)),"epoch-progress")
+                if signal_obj:
+                    signal_obj.emit(str((step+1)/len(dataloader)),"epoch-progress")
             train_loss = train_loss/step
 
-            if self.signal_obj:
-                self.signal_obj.emit("Train Loss: " + str(train_loss),"log")
+            if signal_obj:
+                signal_obj.emit("Train Loss: " + str(train_loss),"log")
 
             val_loss = None
             if valloader:
                 self.model.eval()
                 val_loss = 0
-                if self.signal_obj:
-                    self.signal_obj.emit("Validating Epoch " + str(ep),"log")
+                if signal_obj:
+                    signal_obj.emit("Validating Epoch " + str(ep),"log")
                 for step, batch in enumerate(valloader):
                     batch = batch.to(device)
                     pred = self.model(batch)
@@ -250,8 +249,8 @@ class MoleculePredictor:
                     loss = self.criterion(pred.squeeze(),y)
                     val_loss += float(loss.cpu().item())
                 val_loss = val_loss/step
-                if self.signal_obj:
-                    self.signal_obj.emit("Validation Loss: " + str(val_loss),"log")
+                if signal_obj:
+                    signal_obj.emit("Validation Loss: " + str(val_loss),"log")
 
             scheduler.step()
 
@@ -262,21 +261,21 @@ class MoleculePredictor:
                     min_so_far = val_loss
                     if save_model_path:
                         torch.save(self,save_model_path)
-                if self.signal_obj:
-                    self.signal_obj.emit("Lowest Validation Result So Far: " + str(min_so_far),"log")
+                if signal_obj:
+                    signal_obj.emit("Lowest Validation Result So Far: " + str(min_so_far),"log")
             else:
                 if save_model_path:
                     torch.save(self,save_model_path)
 
-            if self.signal_obj:
-                self.signal_obj.emit(str((ep+1)/epoch),"training-progress")
+            if signal_obj:
+                signal_obj.emit(str((ep+1)/epoch),"training-progress")
 
-        if self.signal_obj:
-            self.signal_obj.emit("Finished training!!","finished-training")
+        if signal_obj:
+            signal_obj.emit("Finished training!!","finished-training")
 
         # TODO: Save training log
 
-    def evaluate(self, eval_data_path, save_result_path=None, device=None):
+    def evaluate(self, eval_data_path, labeled=False, save_result_path=None, device=None, signal_obj=None):
         if self.model.graph_pred == None:
             raise RuntimeError("Model has not been fitted.")
 
@@ -286,19 +285,44 @@ class MoleculePredictor:
             device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
         self.model.to(device)
+        self.model.eval()
 
         eval_data = MoleculeDataset(eval_data_path)
         dataloader = DataLoader(eval_data, batch_size=self.batch_size, shuffle=False)
 
         predictions = []
+        if labeled:
+            ground_truths = []
+        val_loss = 0
         for step, batch in enumerate(dataloader):
             batch = batch.to(device)
-            predictions.append(self.model(batch))
-        predictions = torch.cat(predictions,dim=0)
+            prediction = self.model(batch)
+            if labeled:
+                if not hasattr(batch,'y'):
+                    if signal_obj:
+                        signal_obj.emit("Found no attribute correponding to the expected labels. Please check the data processing.","error")
+                    else:
+                        raise AttributeError("Found no attribute correponding to the expected labels. Please check the data processing.")
+                y = batch.y
+                if not y:
+                    if signal_obj:
+                        signal_obj.emit("Found empty label. Please check the data processing.","error")
+                    else:
+                        raise AttributeError("Found empty attribute 'y' correponding to the expected labels. Please check the data processing.")
+                loss = self.criterion(prediction.squeeze(),y)
+                val_loss += float(loss.cpu().item())
+            val_loss = val_loss/step
+            predictions.append(prediction)
+            ground_truths.append(y)
+
+        if signal_obj:
+            signal_obj.emit("Evaluation Result: " + str(val_loss),"log")
+
+        if signal_obj:
+            signal_obj.emit("Finished evaluating!!","finished-evaluating")
+        # predictions = torch.cat(predictions,dim=0)
 
         # TODO: save predictions
-
-        return predictions
 
     def single_point_evaluate(self, data):
         if self.model.graph_pred == None:

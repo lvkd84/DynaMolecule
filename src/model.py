@@ -3,6 +3,8 @@ from data.dataset import MoleculeDataset
 from models.predictor import MoleculePredictor
 from models.conv import *
 
+import torch
+
 class DataPreparationModel(QObject):
 
     signal_obj = pyqtSignal(str,str)
@@ -31,8 +33,19 @@ class TrainingModel(QObject):
 
         conv_layer = self.CONV[conv]
         predictor = MoleculePredictor(num_layers, emb_dim, conv_layer, JK, pooling = pooling, VN=VN, 
-                                      drop_ratio=drop_ratio, residual=residual, signal_obj = self.signal_obj)
+                                      drop_ratio=drop_ratio, residual=residual)
         predictor.train(data_path=data_path, val_data_path=val_data_path, save_model_path=save_model_path,
-                        task=task, optimizer=optimizer, epoch=epoch, lr=lr, batch_size=batch_size, decay=decay)
+                        task=task, optimizer=optimizer, epoch=epoch, lr=lr, batch_size=batch_size, decay=decay, signal_obj = self.signal_obj)
+
+class EvaluatingModel(QObject):
+
+    signal_obj = pyqtSignal(str,str)
+
+    def __init__(self):
+        super(EvaluatingModel, self).__init__()
+
+    def eval(self, model_path, data_path, labeled):
+        predictor = torch.load(model_path)
+        predictor.eval(data_path, labeled = labeled, signal_obj = self.signal_obj)
         
         

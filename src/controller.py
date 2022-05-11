@@ -110,7 +110,7 @@ class ModelTrainingController():
         self.view.learningTask.setCurrentText('')
 
     def train(self):
-        if self._check_process_input():
+        if self._check_training_input():
             self.thread = QThread()
             model = TrainingModel()
             model.signal_obj.connect(self._processSignal)
@@ -139,7 +139,7 @@ class ModelTrainingController():
             self._processSignal("0", "training-progress")
             self.thread.start()
 
-    def _check_process_input(self):
+    def _check_training_input(self):
         if self.view.dataPathText.text() == '':
             self._processSignal("Need to specify the processed data root.", "log")
             return False
@@ -228,3 +228,65 @@ class ModelTrainingController():
         except ValueError:
             return False
 
+class ModelEvaluationController():
+    def __init__(self, view):
+        super(ModelEvaluationController, self).__init__()
+        self.view = view
+
+    def browseFolder(self):
+        fname = QFileDialog.getExistingDirectory(self.view, "Select processed data folder")
+        self.view.dataPathText.setText(fname)
+
+    def browseFile(self):
+        fname = QFileDialog.getOpenFileName(self.view, "Select saved model file")
+        self.view.modelPathText.setText(fname[0])
+    
+    def clear(self):
+        self.view.modelPathText.clear()
+        self.view.dataPathText.clear()
+
+    def eval(self):
+        if self._check_evaluating_input():
+            self.thread = QThread()
+            model = EvaluatingModel()
+            model.signal_obj.connect(self._processSignal)
+            model.moveToThread(self.thread)
+            self.thread.started.connect(partial(model.eval,
+                        model_path=self.view.modelPathText.text(), 
+                        data_path=self.view.dataPathText.text(), 
+                        labeled=eval(self.view.virtualNode.currentText()), 
+            ))
+            self.thread.finished.connect(self.thread.deleteLater)
+            self._processSignal("0", "progress")
+            self.thread.start()
+
+    def _check_evaluating_input(self):
+        if self.view.modelPathText.text() == '':
+            self._processSignal("Need to specify the trained model file.", "log")
+            return False
+        else:
+            if not os.path.isfile(self.view.dataPathText.text()):
+                self._processSignal("The provided trained model file path does not exist.", "log")
+                return False
+        if self.view.dataPathText.text() == '':
+            self._processSignal("Need to specify the processed data root.", "log")
+            return False
+        else:
+            if not os.path.isdir(self.view.dataPathText.text()):
+                self._processSignal("The provided processed data root does not exist.", "log")
+                return False
+
+    def _processSignal(self, text, type):
+        if type == "log":
+            self.view.evaluatingLog.append(str(text))
+        if type == "progress":
+            self.view.progressBar.setValue(ceil(float(text)*100))
+        if type == "warning":
+            pass
+        if type == "error":
+            self.view.evaluatingLog.append(str(text))
+            self.view.progressBar.setValue(0)
+        if type == "finished-evaluating":
+            self.view.evaluatingLog.append(str(text))
+            if self.thread:
+                self.thread.quit()
