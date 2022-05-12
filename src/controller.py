@@ -84,6 +84,7 @@ class ModelTrainingController():
     def __init__(self, view):
         super(ModelTrainingController, self).__init__()
         self.view = view
+        self.thread = None
 
     def browseFolder(self,text_line):
         fname = QFileDialog.getExistingDirectory(self.view, "Select folder")
@@ -152,7 +153,7 @@ class ModelTrainingController():
                 self._processSignal("The provided validation data root does not exist.", "log")
                 return False
         if self.view.savingPathText.text() != '':
-            if not os.path.isdir(self.view.savingPathText.text()):
+            if not os.path.isdir(os.path.dirname(self.view.savingPathText.text())):
                 self._processSignal("The provided saving location does not exist.", "log")
                 return False
         if self.view.learningTask.currentText() == '':
@@ -232,6 +233,7 @@ class ModelEvaluationController():
     def __init__(self, view):
         super(ModelEvaluationController, self).__init__()
         self.view = view
+        self.thread = None
 
     def browseFolder(self):
         fname = QFileDialog.getExistingDirectory(self.view, "Select processed data folder")
@@ -254,7 +256,7 @@ class ModelEvaluationController():
             self.thread.started.connect(partial(model.eval,
                         model_path=self.view.modelPathText.text(), 
                         data_path=self.view.dataPathText.text(), 
-                        labeled=eval(self.view.virtualNode.currentText()), 
+                        labeled=eval(self.view.labeledData.currentText()), 
             ))
             self.thread.finished.connect(self.thread.deleteLater)
             self._processSignal("0", "progress")
@@ -265,7 +267,7 @@ class ModelEvaluationController():
             self._processSignal("Need to specify the trained model file.", "log")
             return False
         else:
-            if not os.path.isfile(self.view.dataPathText.text()):
+            if not os.path.isfile(self.view.modelPathText.text()):
                 self._processSignal("The provided trained model file path does not exist.", "log")
                 return False
         if self.view.dataPathText.text() == '':
@@ -275,6 +277,7 @@ class ModelEvaluationController():
             if not os.path.isdir(self.view.dataPathText.text()):
                 self._processSignal("The provided processed data root does not exist.", "log")
                 return False
+        return True
 
     def _processSignal(self, text, type):
         if type == "log":

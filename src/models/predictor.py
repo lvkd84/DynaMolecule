@@ -224,7 +224,7 @@ class MoleculePredictor:
                 batch = batch.to(device)
                 pred = self.model(batch)
                 y = batch.y
-                loss = self.criterion(pred.squeeze(),y)
+                loss = self.criterion(pred,y)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -246,7 +246,7 @@ class MoleculePredictor:
                     batch = batch.to(device)
                     pred = self.model(batch)
                     y = batch.y
-                    loss = self.criterion(pred.squeeze(),y)
+                    loss = self.criterion(pred,y)
                     val_loss += float(loss.cpu().item())
                 val_loss = val_loss/step
                 if signal_obj:
@@ -293,10 +293,11 @@ class MoleculePredictor:
         predictions = []
         if labeled:
             ground_truths = []
-        val_loss = 0
+            val_loss = 0
         for step, batch in enumerate(dataloader):
             batch = batch.to(device)
             prediction = self.model(batch)
+            predictions.append(prediction)
             if labeled:
                 if not hasattr(batch,'y'):
                     if signal_obj:
@@ -304,19 +305,21 @@ class MoleculePredictor:
                     else:
                         raise AttributeError("Found no attribute correponding to the expected labels. Please check the data processing.")
                 y = batch.y
-                if not y:
+                if y == None or len(y) == 0:
                     if signal_obj:
                         signal_obj.emit("Found empty label. Please check the data processing.","error")
                     else:
                         raise AttributeError("Found empty attribute 'y' correponding to the expected labels. Please check the data processing.")
-                loss = self.criterion(prediction.squeeze(),y)
+                loss = self.criterion(prediction,y)
+                ground_truths.append(y)
                 val_loss += float(loss.cpu().item())
-            val_loss = val_loss/step
-            predictions.append(prediction)
-            ground_truths.append(y)
+            if signal_obj:
+                signal_obj.emit(str((step+1)/len(dataloader)),"progress")
 
-        if signal_obj:
-            signal_obj.emit("Evaluation Result: " + str(val_loss),"log")
+        if labeled:
+            val_loss = val_loss/step
+            if signal_obj:
+                signal_obj.emit("Evaluation Result: " + str(val_loss),"log")
 
         if signal_obj:
             signal_obj.emit("Finished evaluating!!","finished-evaluating")
