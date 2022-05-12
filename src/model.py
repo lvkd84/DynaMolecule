@@ -8,16 +8,19 @@ import torch
 class DataPreparationModel(QObject):
 
     signal_obj = pyqtSignal(str,str)
+    finished = pyqtSignal()
 
     def __init__(self):
         super(DataPreparationModel, self).__init__()
 
     def create_dataset(self, root, data_file_path = None, smile_column = None, featurizer = None):
         MoleculeDataset(root, data_file_path, smile_column, featurizer, signal_obj = self.signal_obj)
+        self.finished.emit()
 
 class TrainingModel(QObject):
 
     signal_obj = pyqtSignal(str,str)
+    finished = pyqtSignal()
 
     CONV = {
         'GAT': GATConv,
@@ -36,10 +39,12 @@ class TrainingModel(QObject):
                                       drop_ratio=drop_ratio, residual=residual)
         predictor.train(data_path=data_path, val_data_path=val_data_path, save_model_path=save_model_path,
                         task=task, optimizer=optimizer, epoch=epoch, lr=lr, batch_size=batch_size, decay=decay, signal_obj = self.signal_obj)
+        self.finished.emit()
 
 class EvaluatingModel(QObject):
 
     signal_obj = pyqtSignal(str,str)
+    finished = pyqtSignal()
 
     def __init__(self):
         super(EvaluatingModel, self).__init__()
@@ -47,5 +52,6 @@ class EvaluatingModel(QObject):
     def eval(self, model_path, data_path, labeled):
         predictor = torch.load(model_path)
         predictor.evaluate(data_path, labeled = labeled, signal_obj = self.signal_obj)
+        self.finished.emit()
         
         

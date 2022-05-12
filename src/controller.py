@@ -10,6 +10,7 @@ class DataPreparationController():
     def __init__(self, view):
         super(DataPreparationController, self).__init__()
         self.view = view
+        self.thread = None
 
     def browseFolder(self):
         fname = QFileDialog.getExistingDirectory(self.view, "Select saving location")
@@ -27,18 +28,24 @@ class DataPreparationController():
 
     def process(self):
         if self._check_process_input():
-            self.thread = QThread()
-            model = DataPreparationModel()
-            model.signal_obj.connect(self._processSignal)
-            model.moveToThread(self.thread)
-            self.thread.started.connect(partial(model.train,
-                self.view.rootPathText.text(),
-                self.view.dataPathText.text(),
-                self.view.smilesColumnName.text(),
-                self.view.featurizerSpinBar.currentText()
-            ))
-            self.thread.finished.connect(self.thread.deleteLater)
-            self.thread.start()
+            if self.thread == None:
+                self.thread = QThread()
+                model = DataPreparationModel()
+                model.signal_obj.connect(self._processSignal)
+                model.moveToThread(self.thread)
+                self.thread.started.connect(partial(model.train,
+                    self.view.rootPathText.text(),
+                    self.view.dataPathText.text(),
+                    self.view.smilesColumnName.text(),
+                    self.view.featurizerSpinBar.currentText()
+                ))
+                model.finished.connect(self.thread.quit)
+                model.finished.connect(model.deleteLater)
+                self.thread.finished.connect(self._reset_thread)
+                self.thread.start()
+
+    def _reset_thread(self):
+        self.thread = None
 
     def _check_process_input(self):
         if self.view.rootPathText.text() == '':
@@ -76,8 +83,6 @@ class DataPreparationController():
             self.view.progressBar.setValue(0)
         if type == "finished-processing":
             self.view.processingLog.append(str(text))
-            if self.thread:
-                self.thread.quit()
 
 class ModelTrainingController():
 
@@ -112,33 +117,39 @@ class ModelTrainingController():
 
     def train(self):
         if self._check_training_input():
-            self.thread = QThread()
-            model = TrainingModel()
-            model.signal_obj.connect(self._processSignal)
-            model.moveToThread(self.thread)
-            self.thread.started.connect(partial(model.train,
-                        num_layers=int(self.view.numLayers.text()), 
-                        emb_dim=int(self.view.embeddDim.text()), 
-                        conv=self.view.convType.currentText(), 
-                        JK=self.view.jumpingKnowledge.currentText(), 
-                        pooling=self.view.poolingType.currentText(), 
-                        VN=eval(self.view.virtualNode.currentText()), 
-                        drop_ratio=float(self.view.dropRatio.text()), 
-                        residual=eval(self.view.residualConnection.currentText()),
-                        data_path=self.view.dataPathText.text(), 
-                        val_data_path=None if self.view.validDataPathText.text() == '' else self.view.validDataPathText.text(), 
-                        save_model_path=None if self.view.savingPathText.text() == '' else self.view.savingPathText.text(), 
-                        task=self.view.learningTask.currentText(), 
-                        optimizer=self.view.optimizerType.currentText(), 
-                        epoch=int(self.view.numEpoch.text()), 
-                        lr=float(self.view.learningRate.text()), 
-                        batch_size=int(self.view.batchSize.text()), 
-                        decay=float(self.view.decayRate.text())
-            ))
-            self.thread.finished.connect(self.thread.deleteLater)
-            self._processSignal("0", "epoch-progress")
-            self._processSignal("0", "training-progress")
-            self.thread.start()
+            if self.thread == None:
+                self.thread = QThread()
+                model = TrainingModel()
+                model.signal_obj.connect(self._processSignal)
+                model.moveToThread(self.thread)
+                self.thread.started.connect(partial(model.train,
+                            num_layers=int(self.view.numLayers.text()), 
+                            emb_dim=int(self.view.embeddDim.text()), 
+                            conv=self.view.convType.currentText(), 
+                            JK=self.view.jumpingKnowledge.currentText(), 
+                            pooling=self.view.poolingType.currentText(), 
+                            VN=eval(self.view.virtualNode.currentText()), 
+                            drop_ratio=float(self.view.dropRatio.text()), 
+                            residual=eval(self.view.residualConnection.currentText()),
+                            data_path=self.view.dataPathText.text(), 
+                            val_data_path=None if self.view.validDataPathText.text() == '' else self.view.validDataPathText.text(), 
+                            save_model_path=None if self.view.savingPathText.text() == '' else self.view.savingPathText.text(), 
+                            task=self.view.learningTask.currentText(), 
+                            optimizer=self.view.optimizerType.currentText(), 
+                            epoch=int(self.view.numEpoch.text()), 
+                            lr=float(self.view.learningRate.text()), 
+                            batch_size=int(self.view.batchSize.text()), 
+                            decay=float(self.view.decayRate.text())
+                ))
+                model.finished.connect(self.thread.quit)
+                model.finished.connect(model.deleteLater)
+                self.thread.finished.connect(self._reset_thread)
+                self._processSignal("0", "epoch-progress")
+                self._processSignal("0", "training-progress")
+                self.thread.start()
+
+    def _reset_thread(self):
+        self.thread = None
 
     def _check_training_input(self):
         if self.view.dataPathText.text() == '':
@@ -219,8 +230,6 @@ class ModelTrainingController():
             self.view.trainingProgressBar.setValue(0)
         if type == "finished-training":
             self.view.trainingLog.append(str(text))
-            if self.thread:
-                self.thread.quit()
 
     def _isFloat(self,num):
         try:
@@ -249,18 +258,24 @@ class ModelEvaluationController():
 
     def eval(self):
         if self._check_evaluating_input():
-            self.thread = QThread()
-            model = EvaluatingModel()
-            model.signal_obj.connect(self._processSignal)
-            model.moveToThread(self.thread)
-            self.thread.started.connect(partial(model.eval,
-                        model_path=self.view.modelPathText.text(), 
-                        data_path=self.view.dataPathText.text(), 
-                        labeled=eval(self.view.labeledData.currentText()), 
-            ))
-            self.thread.finished.connect(self.thread.deleteLater)
-            self._processSignal("0", "progress")
-            self.thread.start()
+            if self.thread == None:
+                self.thread = QThread()
+                model = EvaluatingModel()
+                model.signal_obj.connect(self._processSignal)
+                model.moveToThread(self.thread)
+                self.thread.started.connect(partial(model.eval,
+                            model_path=self.view.modelPathText.text(), 
+                            data_path=self.view.dataPathText.text(), 
+                            labeled=eval(self.view.labeledData.currentText()), 
+                ))
+                model.finished.connect(self.thread.quit)
+                model.finished.connect(model.deleteLater)
+                self.thread.finished.connect(self._reset_thread)
+                self._processSignal("0", "progress")
+                self.thread.start()
+
+    def _reset_thread(self):
+        self.thread = None
 
     def _check_evaluating_input(self):
         if self.view.modelPathText.text() == '':
@@ -291,5 +306,3 @@ class ModelEvaluationController():
             self.view.progressBar.setValue(0)
         if type == "finished-evaluating":
             self.view.evaluatingLog.append(str(text))
-            if self.thread:
-                self.thread.quit()
