@@ -61,7 +61,7 @@ Model training options:
 *   **Virtual Node** (optional): Specifying whether a virtual node is added to the molecular graph. A virtual node is a global node that connects to every node in the graph which provides a global view to each node and helps information flow better. Empirically, models with virtual nodes often perform better than their vanilla version.
 *   **Dropout Ratio** (optional): A number ranging from 0 to 1 that help regularize the model and control overfitting. A large dropout value greatly suppresses the model's complexity.
 *   **Residual Connection** (optional): Specifying whether to use residual connections in the network. Residual connections help information flow in deep neural network.
-*   **Learning Task (**required): Specifying the learning task so that an appropriate learning objective can be set up internally. Note that all the labels in a data source must be of the same learning task.
+*   **Learning Task** (required): Specifying the learning task so that an appropriate learning objective can be set up internally. Note that all the labels in a data source must be of the same learning task.
 *   **Optimizer** (optional): Specifying the algorithm to optimize (learn) the model's parameters.
 *   **Learning Rate** (optional): Updating rate of the model's parameters.
 *   **Decay Rate** (optional): The decay rate of the learning rate over each epoch.
@@ -70,3 +70,19 @@ Model training options:
 
 Model Evaluation
 ----------------
+
+Automated evaluation of a saved trained model on processed test data.
+
+
+The test data can either contains labels or not. If there is no label, the evaluation simply returns the predictions. If labels exist, then the evaluation returns both the predictions and the performance.
+
+
+All test data's labels need to match those of the training data that the model was trained on.
+
+Model evaluation options:
+
+
+*   **Location of the Saved Trained Model** (required): The path to the saved model file.
+*   **Location of the Processed Evaluation Data** (required): The location of the processed evaluation data files.
+*   **Location to save the Evaluation Results** (optional): The location to save the evaluation results. The results are saved as a tabular file.
+*   **Labeled** (optional): Whether the evaluation data is labeled. If not specify, the module assumes there is no label.
