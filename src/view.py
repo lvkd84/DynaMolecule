@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from functools import partial
 from controller import *
+from main_html import html_str
 
 class MainWindow(QMainWindow):
 
@@ -34,6 +35,7 @@ class NavigationTabs(QTabWidget):
         self.addTab(self.trainTab, 'Model Training')
         self.addTab(self.evalTab, 'Model Evaluation')
 
+
 class HomeTab(QWidget):
 
     def __init__(self):
@@ -42,7 +44,7 @@ class HomeTab(QWidget):
 
     def tabUI(self):
         self.text = QTextEdit()
-        self.text.setPlainText("DynaMolecule")
+        self.text.setHtml(html_str)
         self.text.setReadOnly(True)
 
         layout = QVBoxLayout()
