@@ -257,7 +257,7 @@ class ModelTrainingTab(QWidget):
         self.modelFormLayout.addRow(QLabel("Pooling"),self.poolingType)
         self.modelFormLayout.addRow(QLabel("Virtual Node"),self.virtualNode)
         self.modelFormLayout.addRow(QLabel("Dropout Ratio"),self.dropRatio)
-        self.modelFormLayout.addRow(QLabel("Residual Conenction"),self.residualConnection)
+        self.modelFormLayout.addRow(QLabel("Residual Connection"),self.residualConnection)
         # optimizer, learning rate, decay, epoch, batch size
         self.learningTask = QComboBox(self.trainingFormBox)
         self.learningTask.addItems(['','regression','classification','binary classification'])
