@@ -7,6 +7,9 @@ from models.utils import get_optimizer, get_criterion
 from data.dataset import MoleculeDataset
 from data.featurizer import get_featurizer
 
+import pandas as pd
+import os.path as osp 
+
 class MoleculeGNN(torch.nn.Module):
     
     def __init__(self, num_layers, emb_dim, conv, JK, drop_ratio=0.0, residual=False):
@@ -290,14 +293,15 @@ class MoleculePredictor:
         eval_data = MoleculeDataset(eval_data_path)
         dataloader = DataLoader(eval_data, batch_size=self.batch_size, shuffle=False)
 
-        predictions = []
+        if save_result_path:
+            predictions = []
         if labeled:
-            ground_truths = []
             val_loss = 0
         for step, batch in enumerate(dataloader):
             batch = batch.to(device)
             prediction = self.model(batch)
-            predictions.append(prediction)
+            if save_result_path:
+                predictions.append(prediction)
             if labeled:
                 if not hasattr(batch,'y'):
                     if signal_obj:
@@ -311,7 +315,6 @@ class MoleculePredictor:
                     else:
                         raise AttributeError("Found empty attribute 'y' correponding to the expected labels. Please check the data processing.")
                 loss = self.criterion(prediction,y)
-                ground_truths.append(y)
                 val_loss += float(loss.cpu().item())
             if signal_obj:
                 signal_obj.emit(str((step+1)/len(dataloader)),"progress")
@@ -321,11 +324,24 @@ class MoleculePredictor:
             if signal_obj:
                 signal_obj.emit("Evaluation Result: " + str(val_loss),"log")
 
+        if save_result_path:
+            if signal_obj:
+                signal_obj.emit("Saving Predictions...","log")
+            original_df = pd.read_csv(osp.join(eval_data.raw_dir, eval_data.raw_file_names))
+
+            tasks = [column for column in original_df.columns if column != eval_data.smile_column]
+            predicted_tasks = ['predicted_' + column for column in tasks]
+
+            predictions = torch.cat(predictions,dim=0)
+            predicted_df = pd.DataFrame(predictions.detach().numpy(),columns=predicted_tasks)
+
+            combined_dataframe = pd.concat([original_df.reset_index(drop=True),
+                                            predicted_df.reset_index(drop=True)],axis=1)
+
+            combined_dataframe.to_csv(save_result_path)
+
         if signal_obj:
             signal_obj.emit("Finished evaluating!!","finished-evaluating")
-        # predictions = torch.cat(predictions,dim=0)
-
-        # TODO: save predictions
 
     def single_point_evaluate(self, data):
         if self.model.graph_pred == None:

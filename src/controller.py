@@ -33,7 +33,7 @@ class DataPreparationController():
                 model = DataPreparationModel()
                 model.signal_obj.connect(self._processSignal)
                 model.moveToThread(self.thread)
-                self.thread.started.connect(partial(model.train,
+                self.thread.started.connect(partial(model.create_dataset,
                     self.view.rootPathText.text(),
                     self.view.dataPathText.text(),
                     self.view.smilesColumnName.text(),
@@ -98,7 +98,7 @@ class ModelTrainingController():
         elif text_line == "valid-path":
             self.view.validDataPathText.setText(fname)
         elif text_line == "saving-path":
-            self.view.savingPathText.setText(fname)
+            self.view.savingPathText.setText(fname + '/model.pt')
         else:
             raise ValueError
 
@@ -244,9 +244,15 @@ class ModelEvaluationController():
         self.view = view
         self.thread = None
 
-    def browseFolder(self):
-        fname = QFileDialog.getExistingDirectory(self.view, "Select processed data folder")
-        self.view.dataPathText.setText(fname)
+    def browseFolder(self,text_line):
+        if text_line == 'data-path':
+            fname = QFileDialog.getExistingDirectory(self.view, "Select processed data folder")
+            self.view.dataPathText.setText(fname)
+        elif text_line == 'saving-path':
+            fname = QFileDialog.getExistingDirectory(self.view, "Select saving location")
+            self.view.resultPathText.setText(fname + '/result.csv')
+        else:
+            raise ValueError
 
     def browseFile(self):
         fname = QFileDialog.getOpenFileName(self.view, "Select saved model file")
@@ -265,7 +271,8 @@ class ModelEvaluationController():
                 model.moveToThread(self.thread)
                 self.thread.started.connect(partial(model.eval,
                             model_path=self.view.modelPathText.text(), 
-                            data_path=self.view.dataPathText.text(), 
+                            data_path=self.view.dataPathText.text(),
+                            saving_path=None if self.view.resultPathText.text() == '' else self.view.resultPathText.text(),
                             labeled=eval(self.view.labeledData.currentText()), 
                 ))
                 model.finished.connect(self.thread.quit)

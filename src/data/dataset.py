@@ -28,7 +28,7 @@ class MoleculeDataset(InMemoryDataset):
 
         super(MoleculeDataset, self).__init__(self.folder, transform = None, pre_transform = None)
 
-        self.data, self.slices, self.featurizer_name = torch.load(self.processed_paths[0])
+        self.data, self.slices, self.featurizer_name, self.smile_column = torch.load(self.processed_paths[0])
 
     @property
     def raw_file_names(self):
@@ -96,7 +96,7 @@ class MoleculeDataset(InMemoryDataset):
         if self.signal_obj:
             self.signal_obj.emit('Saving...','log')
 
-        torch.save((data, slices, self.featurizer_name), self.processed_paths[0])
+        torch.save((data, slices, self.featurizer_name, self.smile_column), self.processed_paths[0])
 
         if self.signal_obj:
             self.signal_obj.emit('Done!','log')

@@ -316,6 +316,8 @@ class ModelEvaluationTab(QWidget):
         self._modelPathUI()
         # Get data path
         self._dataPathUI()
+        # Get result saving path
+        self._resultPathUI()
         # Evaluating form
         self._evaluatingFormUI()
         # Submit Buttons
@@ -324,6 +326,7 @@ class ModelEvaluationTab(QWidget):
         self.formLayout = QVBoxLayout()
         self.formLayout.addWidget(self.modelPathBox)
         self.formLayout.addWidget(self.dataPathBox)
+        self.formLayout.addWidget(self.resultPathBox)
         self.formLayout.addWidget(self.evaluatingFormBox)
         self.formLayout.addWidget(self.submitBox)
         self.formWidget.setLayout(self.formLayout)
@@ -371,6 +374,15 @@ class ModelEvaluationTab(QWidget):
         self.dataLayout.addWidget(self.dataBrowseButton)
         self.dataPathBox.setLayout(self.dataLayout)
 
+    def _resultPathUI(self):
+        self.resultPathBox = QGroupBox("Location to save Evaluation Results (Optional)", self.formWidget)
+        self.resultPathText = QLineEdit(self.resultPathBox)
+        self.resultBrowseButton = QPushButton("Browse", self.resultPathBox)
+        self.resultLayout = QHBoxLayout()
+        self.resultLayout.addWidget(self.resultPathText)
+        self.resultLayout.addWidget(self.resultBrowseButton)
+        self.resultPathBox.setLayout(self.resultLayout)
+
     def _evaluatingFormUI(self):
         self.evaluatingFormBox = QGroupBox("Model and Training Options", self.formWidget)
         self.labeledData = QComboBox(self.evaluatingFormBox)
@@ -392,6 +404,7 @@ class ModelEvaluationTab(QWidget):
 
     def _hook_to_controller(self):
         self.modelPathBrowseButton.clicked.connect(self.controller.browseFile)
-        self.dataBrowseButton.clicked.connect(self.controller.browseFolder)
+        self.dataBrowseButton.clicked.connect(partial(self.controller.browseFolder,text_line='data-path'))
+        self.resultBrowseButton.clicked.connect(partial(self.controller.browseFolder,text_line='saving-path'))
         self.clearButton.clicked.connect(self.controller.clear)
         self.processButton.clicked.connect(self.controller.eval)

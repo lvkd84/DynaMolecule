@@ -49,9 +49,9 @@ class EvaluatingModel(QObject):
     def __init__(self):
         super(EvaluatingModel, self).__init__()
 
-    def eval(self, model_path, data_path, labeled):
+    def eval(self, model_path, data_path, saving_path, labeled):
         predictor = torch.load(model_path)
-        predictor.evaluate(data_path, labeled = labeled, signal_obj = self.signal_obj)
+        predictor.evaluate(data_path, save_result_path = saving_path, labeled = labeled, signal_obj = self.signal_obj)
         self.finished.emit()
         
         
