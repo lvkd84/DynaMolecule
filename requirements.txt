@@ -1,0 +1,9 @@
+numpy
+pandas
+rdkit-pypi
+torch
+torch-scatter
+torch-sparse
+torch-cluster
+torch-spline-conv
+PyQt5

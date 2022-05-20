@@ -1,8 +1,8 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from view import *
-from controller import *
-from model import *
+from src.view import *
+from src.controller import *
+from src.model import *
 
 def main():
    app = QApplication(sys.argv)

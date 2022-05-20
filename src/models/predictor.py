@@ -3,9 +3,9 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool
 from torch_geometric.loader import DataLoader
-from models.utils import get_optimizer, get_criterion
-from data.dataset import MoleculeDataset
-from data.featurizer import get_featurizer
+from .utils import get_optimizer, get_criterion
+from ..data.dataset import MoleculeDataset
+from ..data.featurizer import get_featurizer
 
 import pandas as pd
 import os.path as osp 

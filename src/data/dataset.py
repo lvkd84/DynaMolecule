@@ -4,8 +4,8 @@ import shutil
 import gzip
 import pandas as pd
 
-from data.utils import smiles2graph
-from data.featurizer import OGBFeaturizer, get_featurizer
+from .utils import smiles2graph
+from .featurizer import OGBFeaturizer, get_featurizer
 
 import torch
 from torch_geometric.data import InMemoryDataset

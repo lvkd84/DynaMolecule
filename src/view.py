@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import *
 from functools import partial
-from controller import *
-from main_html import html_str
+from .controller import *
+from .main_html import html_str
 
 class MainWindow(QMainWindow):
 

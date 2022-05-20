@@ -1,7 +1,7 @@
 import os
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QThread
-from model import *
+from .model import *
 from math import ceil
 from functools import partial
 
